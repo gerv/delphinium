@@ -272,7 +272,7 @@
     <tr>
       [% INCLUDE "bug/field-label.html.tmpl"
            field = bug_fields.rep_platform, editable = 1, accesskey = "h" %]
-      <td class="field_value">
+      <td class="field_value" id="field_value_rep_platform">
        [% INCLUDE bug/field.html.tmpl
             bug = bug, field = bug_fields.rep_platform,
             no_tds = 1, value = bug.rep_platform
@@ -362,10 +362,10 @@
 [% BLOCK section_people %]
 
     <tr>
-      <th class="field_label">
+      <th id="field_label_assignee" class="field_label">
         <a href="page.cgi?id=fields.html#assigned_to">Assigned To</a>:
       </th>
-      <td>
+      <td id="field_value_assignee">
         [% IF bug.check_can_change_field("assigned_to", 0, 1) %]
           <div id="bz_assignee_edit_container" class="bz_default_hidden">
             <span>
@@ -478,7 +478,7 @@
       editable = 1
       accesskey = "u"
     %]
-    <td>
+    <td id="field_value_bug_file_loc">
       [% IF bug.check_can_change_field("bug_file_loc", 0, 1) %]
         <span id="bz_url_edit_container" class="bz_default_hidden"> 
         [% IF is_safe_url(bug.bug_file_loc) %]
@@ -524,11 +524,11 @@
   
   [% IF use_keywords %]
     <tr>
-      <th class="field_label">
+      <th id="field_label_keywords" class="field_label">
         <label for="keywords" accesskey="k">
           <a href="describekeywords.cgi"><u>K</u>eywords</a></label>:
       </th>
-      <td class="field_value" colspan="2">
+      <td id="field_value_keywords" class="field_value" colspan="2">
         [% INCLUDE bug/field.html.tmpl
            bug = bug, field = bug_fields.keywords, value = bug.keywords
            editable = bug.check_can_change_field("keywords", 0, 1),
@@ -702,7 +702,7 @@
 [% BLOCK section_dates %]
   <tr>
     <th class="field_label">
-      Reported:
+      Started:
     </th>
     <td>
      [% bug.creation_ts FILTER time %] by [% INCLUDE global/user.html.tmpl who = bug.reporter %]
@@ -711,7 +711,7 @@
   
   <tr>
     <th class="field_label">
-      Modified:
+      Last Modified:
     </th>
     <td>
       [% bug.delta_ts FILTER time FILTER replace(':\d\d$', '') FILTER replace(':\d\d ', ' ')%] 
@@ -748,7 +748,7 @@
           users
         [% END %]
         [% IF user.id %]
-          [% IF bug.cc.contains( user.email ) %]
+          [% IF bug.cc.contains( user.login ) %]
             including you
           [% END %]
         [% END %]
@@ -926,7 +926,7 @@
 
   [% INCLUDE "bug/field-label.html.tmpl" %]
 
-  <td>
+  <td id="field_value_[% field.name FILTER html %]">
     <span id="[% field.name FILTER html %]_input_area">
       [% IF bug.check_can_change_field(field.name, 0, 1) %]
         <input name="[% field.name FILTER html %]" 
@@ -1105,7 +1105,7 @@
 [%############################################################################%]
 
 [% BLOCK select %]
-  <td>
+  <td id="field_value_[% selname %]">
     [% IF bug.check_can_change_field(selname, 0, 1) 
           AND bug.choices.${selname}.size > 1 %]
       <input type="hidden" id="[% selname %]_dirty">
