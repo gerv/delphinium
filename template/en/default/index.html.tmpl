@@ -110,7 +110,7 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
         <div class="bz_common_actions">
           <ul>
             <li>
-              <a id="enter_bug" href="enter_bug.cgi"><span>File
+              <a id="enter_bug" href="enter_bug.cgi"><span>Open
               [%= terms.aBug %]</span></a>
             </li>
             <li>
@@ -131,40 +131,7 @@ YAHOO.util.Event.onDOMReady(onLoadActions);
           </ul>
         </div>
 
-        <form id="quicksearchForm" name="quicksearchForm" action="buglist.cgi"
-              onsubmit="return checkQuicksearch(this);">
-          <div>
-            <input id="quicksearch_main" type="text" name="quicksearch"
-              title="Quick Search" 
-              onfocus="quicksearchHelpText(this.id, 'hide');"
-              onblur="quicksearchHelpText(this.id, 'show');"
-            >
-            <input id="find" type="submit" value="Quick Search">
-            <ul class="additional_links" id="quicksearch_links">
-              <li>
-                <a href="page.cgi?id=quicksearch.html">Quick Search help</a>
-              </li>
-              <li class="bz_default_hidden" id="quicksearch_plugin">
-                |
-                <a href="javascript:window.external.AddSearchProvider('[% urlbase FILTER html %]search_plugin.cgi')">
-                 Install the Quick Search plugin
-                </a>
-              </li>
-            </ul>
-            <ul class="additional_links">
-              <li>
-                <a href="[% docs_urlbase FILTER html %]using.html">
-                  [%- terms.Bugzilla %] User's Guide</a>
-              </li>
-              <li>
-                |
-                <a href="page.cgi?id=release-notes.html">Release Notes</a>
-              </li>
-              [% Hook.process('additional_links') %]
-            </ul>
-          </div>
-        </form>
-        <div class="outro">[% Hook.process('outro') %]</div>
+      <div class="outro">[% Hook.process('outro') %]</div>
       </td>
     </tr>
   </table>

@@ -35,7 +35,7 @@
     [% ELSE %]
       href="page.cgi?id=fields.html#[% field.name FILTER uri %]"
     [% END %]
-  >[%- field_descs.${field.name} FILTER html %]:</a>
+  >[%- field_descs.${field.name} FILTER html %]</a>:
 
   [% '</label>' IF editable %]
 </[% tag_name FILTER html %]>
