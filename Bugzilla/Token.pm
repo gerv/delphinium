@@ -78,8 +78,8 @@ sub issue_new_user_account_token {
 
 sub IssueEmailChangeToken {
     my ($user, $new_email) = @_;
-    my $email_suffix = Bugzilla->params->{'emailsuffix'};
-    my $old_email = $user->login;
+    $new_email = $new_email . Bugzilla->params->{'emailsuffix'};
+    my $old_email = $user->email;
 
     my ($token, $token_ts) = _create_token($user->id, 'emailold', $old_email . ":" . $new_email);
 
@@ -90,11 +90,11 @@ sub IssueEmailChangeToken {
     my $template = Bugzilla->template_inner($user->setting('lang'));
     my $vars = {};
 
-    $vars->{'oldemailaddress'} = $old_email . $email_suffix;
-    $vars->{'newemailaddress'} = $new_email . $email_suffix;
+    $vars->{'oldemailaddress'} = $old_email;
+    $vars->{'newemailaddress'} = $new_email;
     $vars->{'expiration_ts'} = ctime($token_ts + MAX_TOKEN_AGE * 86400);
     $vars->{'token'} = $token;
-    $vars->{'emailaddress'} = $old_email . $email_suffix;
+    $vars->{'emailaddress'} = $old_email;
 
     my $message;
     $template->process("account/email/change-old.txt.tmpl", $vars, \$message)
@@ -103,7 +103,7 @@ sub IssueEmailChangeToken {
     MessageToMTA($message);
 
     $vars->{'token'} = $newtoken;
-    $vars->{'emailaddress'} = $new_email . $email_suffix;
+    $vars->{'emailaddress'} = $new_email;
 
     $message = "";
     $template->process("account/email/change-new.txt.tmpl", $vars, \$message)

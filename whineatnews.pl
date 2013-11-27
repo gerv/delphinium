@@ -60,7 +60,7 @@ foreach my $email (sort (keys %bugs)) {
     my $user = new Bugzilla::User({name => $email});
     next if $user->email_disabled;
 
-    my $vars = {'email' => $email};
+    my $vars = {'user' => $user};
 
     my @bugs = ();
     foreach my $i (@{$bugs{$email}}) {
