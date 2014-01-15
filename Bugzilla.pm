@@ -9,10 +9,16 @@ package Bugzilla;
 
 use strict;
 
-# We want any compile errors to get to the browser, if possible.
 BEGIN {
-    # This makes sure we're in a CGI.
-    if ($ENV{SERVER_SOFTWARE} && !$ENV{MOD_PERL}) {
+    # We want any compile errors to get to the browser, if possible.
+    # This only affects mod_cgi, though--it doesn't work under mod_perl,
+    # and under Plack we have different ways of accomplishing this.
+    #
+    # Checking these ENV variables is like calling
+    # i_am_cgi() && !i_am_persistent(), but we can't use those here yet,
+    # because we want to even catch errors in compiling
+    # Bugzilla::Install::Util.
+    if ($ENV{SERVER_SOFTWARE} && !$ENV{MOD_PERL} && !$ENV{PLACK_VERSION}) {
         require CGI::Carp;
         CGI::Carp->import('fatalsToBrowser');
     }
@@ -26,7 +32,7 @@ use Bugzilla::CGI;
 use Bugzilla::Extension;
 use Bugzilla::DB;
 use Bugzilla::Install::Localconfig qw(read_localconfig);
-use Bugzilla::Install::Requirements qw(OPTIONAL_MODULES);
+use Bugzilla::Install::Requirements qw(feature_available);
 use Bugzilla::Install::Util qw(init_console include_languages);
 use Bugzilla::Template;
 use Bugzilla::User;
@@ -191,6 +197,8 @@ sub template_inner {
     return $class->request_cache->{"template_inner_$lang"};
 }
 
+# Also see the bottom of this file, where extension packages are
+# pre-loaded in persistent environments.
 our $extension_packages;
 sub extensions {
     my ($class) = @_;
@@ -214,36 +222,7 @@ sub extensions {
 
 sub feature {
     my ($class, $feature) = @_;
-    my $cache = $class->request_cache;
-    return $cache->{feature}->{$feature}
-        if exists $cache->{feature}->{$feature};
-
-    my $feature_map = $cache->{feature_map};
-    if (!$feature_map) {
-        foreach my $package (@{ OPTIONAL_MODULES() }) {
-            foreach my $f (@{ $package->{feature} }) {
-                $feature_map->{$f} ||= [];
-                push(@{ $feature_map->{$f} }, $package->{module});
-            }
-        }
-        $cache->{feature_map} = $feature_map;
-    }
-
-    if (!$feature_map->{$feature}) {
-        ThrowCodeError('invalid_feature', { feature => $feature });
-    }
-
-    my $success = 1;
-    foreach my $module (@{ $feature_map->{$feature} }) {
-        # We can't use a string eval and "use" here (it kills Template-Toolkit,
-        # see https://rt.cpan.org/Public/Bug/Display.html?id=47929), so we have
-        # to do a block eval.
-        $module =~ s{::}{/}g;
-        $module .= ".pm";
-        eval { require $module; 1; } or $success = 0;
-    }
-    $cache->{feature}->{$feature} = $success;
-    return $success;
+    return feature_available($feature);
 }
 
 sub cgi {
@@ -646,7 +625,10 @@ sub request_cache {
 }
 
 sub clear_request_cache {
-    $_request_cache = {};
+    # We set this to an empty hashref instead of undefining it because
+    # this allows FastCGI to use it again for the next request.
+    $Bugzilla::Install::Util::_cache = {};
+    $_request_cache = $Bugzilla::Install::Util::_cache;
     if ($ENV{MOD_PERL}) {
         require Apache2::RequestUtil;
         my $request = eval { Apache2::RequestUtil->request };
@@ -688,11 +670,20 @@ sub _cleanup {
 }
 
 sub END {
-    # Bugzilla.pm cannot compile in mod_perl.pl if this runs.
-    _cleanup() unless $ENV{MOD_PERL};
+    # FastCGI and mod_perl both run this themselves.
+    _cleanup() unless i_am_persistent();
 }
 
-init_page() if !$ENV{MOD_PERL};
+if (i_am_persistent()) {
+    # If we are running under mod_perl or FastCGI, preload all the
+    # Extension packages. This has to be done down here so that
+    # $_request_cache is initialized (and any other default values
+    # are set up).
+    $extension_packages = Bugzilla::Extension->load_all() if i_am_persistent();
+}
+else {
+    init_page();
+}
 
 1;
 

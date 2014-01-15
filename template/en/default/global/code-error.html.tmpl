@@ -176,12 +176,6 @@
     [% title = "Invalid Field Type" %]
     The type <em>[% type FILTER html %]</em> is not a valid field type.
 
-  [% ELSIF error == "invalid_feature" %]
-    [% title = "Invalid Feature Name" %]
-    [% feature FILTER html %] is not a valid feature name. See
-    <code>OPTIONAL_MODULES</code> in 
-    <code>Bugzilla::Install::Requirements</code> for valid names.
-
   [% ELSIF error == "invalid_flag_association" %]
     [% title = "Invalid Flag Association" %]
     Some flags do not belong to

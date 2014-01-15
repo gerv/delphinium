@@ -145,6 +145,8 @@ sub FILESYSTEM {
         'whine.pl'        => { perms => WS_EXECUTE },
         'email_in.pl'     => { perms => WS_EXECUTE },
         'sanitycheck.pl'  => { perms => WS_EXECUTE },
+        'fastcgi.pl'      => { perms => WS_EXECUTE },
+        'app.psgi'        => { perms => OWNER_EXECUTE | WS_SERVE },
         'checksetup.pl'   => { perms => OWNER_EXECUTE },
         'runtests.pl'     => { perms => OWNER_EXECUTE },
         'jobqueue.pl'     => { perms => OWNER_EXECUTE },

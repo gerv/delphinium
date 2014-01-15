@@ -38,7 +38,11 @@ our @EXPORT = qw(
     check_graphviz
     have_vers
     install_command
-    map_files_to_features
+);
+
+our @EXPORT_OK = qw(
+    compilable_cgis
+    feature_available
 );
 
 # This is how many *'s are in the top of each "box" message printed
@@ -366,6 +370,13 @@ sub OPTIONAL_MODULES {
         feature => ['jobqueue'],
     },
 
+    {
+        package => 'Plack',
+        module  => 'Plack',
+        version => 0,
+        feature => ['fastcgi'],
+    },
+
     # mod_perl
     {
         package => 'mod_perl',
@@ -404,6 +415,7 @@ sub OPTIONAL_MODULES {
 # This maps features to the files that require that feature in order
 # to compile. It is used by t/001compile.t and mod_perl.pl.
 use constant FEATURE_FILES => (
+    fastcgi       => ['app.psgi'],
     jsonrpc       => ['Bugzilla/WebService/Server/JSONRPC.pm', 'jsonrpc.cgi'],
     xmlrpc        => ['Bugzilla/WebService/Server/XMLRPC.pm', 'xmlrpc.cgi',
                       'Bugzilla/WebService.pm', 'Bugzilla/WebService/*.pm'],
@@ -777,7 +789,69 @@ sub install_command {
     return sprintf $command, $package;
 }
 
-# This does a reverse mapping for FEATURE_FILES.
+######################################
+# Functions Related to FEATURE_FILES #
+######################################
+
+# Used by mod_perl and FastCGI to know which CGI scripts
+# can be compiled, based on which features are available.
+sub compilable_cgis {
+    my $cgi_path = bz_locations()->{'cgi_path'};
+    my $feature_files = map_files_to_features();
+
+    my @compilable;
+    foreach my $file (glob "$cgi_path/*.cgi") {
+        my $base_filename = File::Basename::basename($file);
+        if (my $feature = $feature_files->{$base_filename}) {
+            next if !feature_available($feature);
+        }
+        push(@compilable, $file);
+    }
+
+    return @compilable;
+}
+
+sub _feature_requirements {
+    my %feature_map;
+    my $optional_modules = OPTIONAL_MODULES;
+    foreach my $package (@$optional_modules) {
+        foreach my $feature (@{ $package->{feature} }) {
+            $feature_map{$feature} ||= [];
+            push(@{ $feature_map{$feature} }, $package->{module});
+        }
+    }
+    return \%feature_map;
+}
+
+sub feature_available {
+    my ($feature) = @_;
+
+    my $cache = Bugzilla::Install::Util::_cache();
+    return $cache->{feature}->{$feature}
+        if exists $cache->{feature}->{$feature};
+
+    $cache->{feature_map} ||= _feature_requirements();
+    my $feature_map = $cache->{feature_map};
+
+    if (!$feature_map->{$feature}) {
+        die install_string('invalid_feature', { feature => $feature });
+    }
+
+    my $success = 1;
+    foreach my $module (@{ $feature_map->{$feature} }) {
+        # We can't use a string eval and "use" here (it kills Template-Toolkit,
+        # see https://rt.cpan.org/Public/Bug/Display.html?id=47929), so we have
+        # to do a block eval.
+        $module =~ s{::}{/}g;
+        $module .= ".pm";
+        eval { require $module; 1; } or $success = 0;
+    }
+    $cache->{feature}->{$feature} = $success;
+    return $success;
+}
+
+# This says which files are associated with which features.
+# Basically, it returns a reverse mapping of FEATURE_FILES.
 sub map_files_to_features {
     my %features = FEATURE_FILES;
     my %files;

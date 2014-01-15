@@ -86,6 +86,9 @@ if ($switch{'all'} || $switch{'upgrade-all'}) {
         # --all shouldn't include mod_perl2, because it can have some complex
         # configuration, and really should be installed on its own.
         next if $cpan_name eq 'mod_perl2';
+        # For working FastCGI support, we need the "plackup" binary
+        # installed somewhere in the system path.
+        next if $cpan_name eq 'Plack';
         next if $cpan_name eq 'DBD::Oracle' and !$ENV{ORACLE_HOME};
         next if $cpan_name eq 'DBD::Pg' and !bin_loc('pg_config');
         install_module($cpan_name);

@@ -13,7 +13,7 @@ use base qw(Exporter);
 @Bugzilla::Util::EXPORT = qw(trick_taint detaint_natural detaint_signed
                              html_quote url_quote xml_quote
                              css_class_quote html_light_quote
-                             i_am_cgi correct_urlbase remote_ip validate_ip
+                             i_am_cgi i_am_persistent correct_urlbase remote_ip validate_ip
                              do_ssl_redirect_if_required use_attachbase
                              diff_arrays on_main_db say
                              trim wrap_hard wrap_comment find_wrap_point
@@ -27,6 +27,11 @@ use base qw(Exporter);
 use Bugzilla::Constants;
 use Bugzilla::RNG qw(irand);
 use Bugzilla::Error;
+# We import these so that we can re-export them again, because historically
+# many modules imported these from Bugzilla::Util. However, they are
+# in Bugzilla::Install::Util because they are needed during times when
+# we can't load Bugzilla::Util.
+use Bugzilla::Install::Util qw(i_am_cgi i_am_persistent trick_taint trim);
 
 use Date::Parse;
 use Date::Format;
@@ -38,14 +43,6 @@ use Template::Filters;
 use Text::Wrap;
 use Encode qw(encode decode resolve_alias);
 use Encode::Guess;
-
-sub trick_taint {
-    require Carp;
-    Carp::confess("Undef to trick_taint") unless defined $_[0];
-    my $match = $_[0] =~ /^(.*)$/s;
-    $_[0] = $match ? $1 : undef;
-    return (defined($_[0]));
-}
 
 sub detaint_natural {
     my $match = $_[0] =~ /^(\d+)$/;
@@ -222,12 +219,6 @@ sub xml_quote {
                [\x{D800}-\x{DFFF}]|
                [\x{FFFE}-\x{FFFF}])//gx;
     return $var;
-}
-
-sub i_am_cgi {
-    # I use SERVER_SOFTWARE because it's required to be
-    # defined for all requests in the CGI spec.
-    return exists $ENV{'SERVER_SOFTWARE'} ? 1 : 0;
 }
 
 # This exists as a separate function from Bugzilla::CGI::redirect_to_https
@@ -413,15 +404,6 @@ sub diff_arrays {
 sub say (@) {
     print @_;
     print "\n";
-}
-
-sub trim {
-    my ($str) = @_;
-    if ($str) {
-      $str =~ s/^\s+//g;
-      $str =~ s/\s+$//g;
-    }
-    return $str;
 }
 
 sub wrap_comment {
@@ -862,6 +844,7 @@ Bugzilla::Util - Generic utility functions for bugzilla
   # Functions that tell you about your environment
   my $is_cgi   = i_am_cgi();
   my $urlbase  = correct_urlbase();
+  my $is_mod_perl_or_fastcgi = i_am_persistent();
 
   # Data manipulation
   ($removed, $added) = diff_arrays(\@old, \@new);
@@ -987,6 +970,10 @@ Functions returning information about your environment or location.
 Tells you whether or not you are being run as a CGI script in a web
 server. For example, it would return false if the caller is running
 in a command-line script.
+
+=item C<i_am_persistent>
+
+Returns a true value if you are running under mod_perl or FastCGI.
 
 =item C<correct_urlbase()>
 

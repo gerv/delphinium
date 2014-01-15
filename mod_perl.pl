@@ -80,15 +80,11 @@ EOT
 
 $server->add_config([split("\n", $conf)]);
 
-# Pre-load all extensions
-$Bugzilla::extension_packages = Bugzilla::Extension->load_all();
-
 # Have ModPerl::RegistryLoader pre-compile all CGI scripts.
 my $rl = new ModPerl::RegistryLoader();
 # If we try to do this in "new" it fails because it looks for a 
 # Bugzilla/ModPerl/ResponseHandler.pm
 $rl->{package} = 'Bugzilla::ModPerl::ResponseHandler';
-my $feature_files = Bugzilla::Install::Requirements::map_files_to_features();
 
 # Prevent "use lib" from doing anything when the .cgi files are compiled.
 # This is important to prevent the current directory from getting into
@@ -97,11 +93,7 @@ no warnings 'redefine';
 local *lib::import = sub {};
 use warnings;
 
-foreach my $file (glob "$cgi_path/*.cgi") {
-    my $base_filename = File::Basename::basename($file);
-    if (my $feature = $feature_files->{$base_filename}) {
-        next if !Bugzilla->feature($feature);
-    }
+foreach my $file (compilable_cgis()) {
     Bugzilla::Util::trick_taint($file);
     $rl->handler($file, $file);
 }

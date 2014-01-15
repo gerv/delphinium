@@ -13,6 +13,7 @@ use base qw(Exporter);
 use Bugzilla::Constants;
 use Bugzilla::Hook;
 use Bugzilla::Install::Filesystem qw(fix_file_permissions);
+use Bugzilla::Install::Util qw(i_am_cgi i_am_persistent);
 use Data::Dumper;
 use File::Temp;
 
@@ -303,14 +304,17 @@ sub read_param_file {
         # Now read the param back out from the sandbox
         %params = %{$s->varglob('param')};
     }
-    elsif ($ENV{'SERVER_SOFTWARE'}) {
-       # We're in a CGI, but the params file doesn't exist. We can't
+    elsif (i_am_cgi()) {
+       # We're in a CGI, but the params file doesn't exist. We can't use
        # Template Toolkit, or even install_string, since checksetup
-       # might not have thrown an error. Bugzilla::CGI->new
+       # might not have set those up yet. Bugzilla::CGI->new
        # hasn't even been called yet, so we manually use CGI::Carp here
-       # so that the user sees the error.
-       require CGI::Carp;
-       CGI::Carp->import('fatalsToBrowser');
+       # so that the user sees the error, except under mod_perl and Plack,
+       # which don't support CGI::Carp.
+       if (!i_am_persistent()) {
+           require CGI::Carp;
+           CGI::Carp->import('fatalsToBrowser');
+       }
        die "The $datadir/params file does not exist."
            . ' You probably need to run checksetup.pl.',
     }

@@ -21,14 +21,17 @@ use Data::Dumper;
 use Date::Format;
 
 # We cannot use $^S to detect if we are in an eval(), because mod_perl
-# already eval'uates everything, so $^S = 1 in all cases under mod_perl!
+# and Plack already eval'uate everything, so $^S = 1 always under those!
 sub _in_eval {
-    my $in_eval = 0;
     for (my $stack = 1; my $sub = (caller($stack))[3]; $stack++) {
-        last if $sub =~ /^ModPerl/;
-        $in_eval = 1 if $sub =~ /^\(eval\)/;
+        last if $sub =~ /^(?:ModPerl|Plack|CGI::Compile)/;
+        return 1 if $sub =~ /^\(eval\)/
+                    # If the very next stack item is CGI::Compile, then
+                    # we're not in a real eval, we're in CGI::Compile's
+                    # top-level eval while running under Plack.
+                    && (caller($stack + 1))[3] !~ /^CGI::Compile/;
     }
-    return $in_eval;
+    return 0;
 }
 
 sub _throw_error {

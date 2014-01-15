@@ -83,6 +83,7 @@ the documentation of Bugzilla::Extension for details.
 END
     feature_auth_ldap         => 'LDAP Authentication',
     feature_auth_radius       => 'RADIUS Authentication',
+    feature_fastcgi           => 'FastCGI Support',
     feature_graphical_reports => 'Graphical Reports',
     feature_html_desc         => 'More HTML in Product/Group Descriptions',
     feature_inbound_email     => 'Inbound Email',
@@ -122,6 +123,10 @@ then the value of the ##column## column that needs to be fixed:
 EOT
     install_module => 'Installing ##module## version ##version##...',
     installation_failed => '*** Installation aborted. Read the messages above. ***',
+    invalid_feature => <<'END',
+'##feature##' is not a valid feature name. See OPTIONAL_MODULES in
+Bugzilla::Install::Requirements for valid names.
+END
     install_no_compiler => <<END,
 ERROR: Using install-module.pl requires that you install a compiler, such as
 gcc.

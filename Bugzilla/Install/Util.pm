@@ -31,6 +31,8 @@ our @EXPORT_OK = qw(
     extension_package_directory
     extension_requirement_packages
     extension_template_directory
+    i_am_cgi
+    i_am_persistent
     extension_web_directory
     indicate_progress
     install_string
@@ -39,6 +41,8 @@ our @EXPORT_OK = qw(
     template_include_path
     vers_cmp
     init_console
+    trick_taint
+    trim
 );
 
 sub bin_loc {
@@ -305,8 +309,7 @@ sub install_string {
 sub _wanted_languages {
     my ($requested, @wanted);
 
-    # Checking SERVER_SOFTWARE is the same as i_am_cgi() in Bugzilla::Util.
-    if (exists $ENV{'SERVER_SOFTWARE'}) {
+    if (i_am_cgi()) {
         my $cgi = eval { Bugzilla->cgi } || eval { require CGI; return CGI->new() };
         $requested = $cgi->http('Accept-Language') || '';
         my $lang = $cgi->cookie('LANG');
@@ -698,9 +701,28 @@ sub _cache {
     return $_cache;
 }
 
-###############################
-# Copied from Bugzilla::Util #
-##############################
+#############################################
+# Documented and Exported in Bugzilla::Util #
+#############################################
+
+# These are functions that are used everywhere in Bugzilla, but are 
+# needed during times when we can't load Bugzilla::Util. Bugzilla::Util
+# imports them from here and then re-exports them, so you can get them
+# from here or from there.
+
+sub i_am_cgi {
+    # I use SERVER_SOFTWARE because it's required to be defined for all
+    # requests in the CGI spec.
+    #
+    # Also, under mod_perl and FastCGI, when we are compiling the CGIs,
+    # SERVER_SOFTWARE many not be defined, but we still need to act like
+    # we are in a webserver environment.
+    return (exists $ENV{'SERVER_SOFTWARE'} or i_am_persistent()) ? 1 : 0;
+}
+
+sub i_am_persistent {
+    return $ENV{MOD_PERL} || $ENV{PLACK_VERSION};
+}
 
 sub trick_taint {
     require Carp;

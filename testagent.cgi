@@ -12,5 +12,9 @@
 
 use strict;
 print "content-type:text/plain\n\n";
-print "OK " . ($::ENV{MOD_PERL} || "mod_cgi") . "\n";
+print "OK";
+my @info = ($ENV{MOD_PERL}, $ENV{PLACK_VERSION});
+@info = grep { defined($_) } @info;
+my $info_string = join(' ', @info) || 'mod_cgi';
+print ' ', $info_string, "\n";
 exit;

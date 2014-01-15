@@ -23,8 +23,7 @@ BEGIN { chdir dirname($0); }
 use lib qw(. lib);
 use Bugzilla::Constants;
 use Bugzilla::Install::Requirements;
-use Bugzilla::Install::Util qw(install_string get_version_and_os 
-                               init_console success);
+use Bugzilla::Install::Util qw(install_string get_version_and_os init_console i_am_cgi success);
 
 ######################################################################
 # Live Code

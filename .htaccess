@@ -1,7 +1,10 @@
 # Don't allow people to retrieve non-cgi executable files or our private data
-<FilesMatch (\.pm|\.pl|\.tmpl|localconfig.*)$>
+<FilesMatch (\.pm|\.pl|\.tmpl|\.psgi|localconfig.*)$>
   deny from all
 </FilesMatch>
+<Files 'fastcgi.pl'>
+  allow from all
+</Files>
 
 Options -Indexes
 
