@@ -11,8 +11,6 @@
   style_urls = [ "skins/standard/search_form.css" ]
 %]
 
-[% WRAPPER search/tabs.html.tmpl %]
-
 <p>
 Find a specific [% terms.bug %] by entering words that describe it.  
 [% terms.Bugzilla %] will search [% terms.bug %] descriptions and comments
@@ -116,7 +114,5 @@ for "crash secure SSL flash".
   </tr>
 </table>
 </form>
-
-[% END %]
 
 [% PROCESS global/footer.html.tmpl %]

@@ -2,3 +2,11 @@
 #expert_fields_controller {
     display: none;
 }
+
+#field_container_product {
+    white-space: nowrap;
+}
+
+#field_label_reporter, #comp_desc_container {
+    padding-left: 50px;
+}

@@ -7,11 +7,36 @@
  */
 
 /* Looks so much better... */
-.field_label {
+.field_label, label {
     vertical-align: middle;
 }
 
 /* ...except for this one */
 #bug_status_bottom th.field_label {
     vertical-align: top;
+}
+
+.bz_section_spacer, #bz_restrict_group_visibility_help {
+    display: none;
+}
+
+/* Hide unused rows */
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(6),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(7),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(8),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(10),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(12),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(13),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(15),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(16),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(17),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(18),
+#bz_show_bug_column_1 > table:nth-child(1) > tbody:nth-child(1) > tr:nth-child(19)
+{
+    display: none;
+}
+
+input[type="checkbox"] {
+    vertical-align: middle;
+    padding: 0px;
 }
