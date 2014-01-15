@@ -12,6 +12,8 @@ use base qw(Bugzilla::Extension);
 # This code for this is in ./extensions/Delphinium/lib/Util.pm
 use Bugzilla::Extension::Delphinium::Util;
 
+use Bugzilla::Constants;
+
 our $VERSION = '0.01';
 
 # See the documentation of Bugzilla::Hook ("perldoc Bugzilla::Hook" 
@@ -19,6 +21,19 @@ our $VERSION = '0.01';
 sub install_update_db {
     my ($self, $args) = @_;
 
+}
+
+sub bug_check_can_change_field {
+    my ($self, $args) = @_;
+    my ($bug, $field, $old_value, $new_value, $priv_results)
+                     = @$args{qw(bug field old_value new_value priv_results)};
+
+    # Only moderators may close or reopen issues
+    if ($field eq "bug_status") {
+        unless (Bugzilla->user->in_group('moderators')) {
+            push @$priv_results, PRIVILEGES_REQUIRED_EMPOWERED;
+        }
+    }
 }
 
 __PACKAGE__->NAME;
