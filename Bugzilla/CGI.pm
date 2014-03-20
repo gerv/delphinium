@@ -62,7 +62,9 @@ sub new {
             my $script_name = $self->script_name;
             $path_info =~ s/^\Q$script_name\E//;
             if ($path_info) {
-                print $self->redirect($self->url(-path => 0, -query => 1));
+                # Commented out - infinite redirect loop. $path_info appears
+                # to be empty, but the if test still passes!
+                # print $self->redirect($self->url(-path => 0, -query => 1));
             }
         }
     }
