@@ -207,6 +207,18 @@ sub type {
         utf8::encode($value) if utf8::is_utf8($value);
         $retval = encode_base64($value, '');
     }
+    elsif ($type eq 'email') {
+        # If we use_email_as_login, we assume email (and login) exposure is
+        # OK, because it's used in the UI. If we aren't, then we hide email
+        # addresses completely unless you are logged in. Eventually, we will
+        # hide them unless the user is in editusers, but that requires giving
+        # API users another way to unambiguously refer to users.
+        if (!Bugzilla->params->{'use_email_as_login'}
+            && !Bugzilla->user->id)
+        {
+            $retval = "";
+        }
+    }
 
     return $retval;
 }

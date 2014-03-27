@@ -138,6 +138,8 @@ if ($action eq 'save' && $current_module) {
         }
     }
 
+    call_param_onchange_handlers(\@changes);
+
     $vars->{'message'} = 'parameters_updated';
     $vars->{'param_changed'} = \@changes;
 

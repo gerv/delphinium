@@ -640,15 +640,14 @@ sub generate_random_password {
 }
 
 sub validate_email_syntax {
-    my ($addr) = @_;
+    my ($email) = @_;
     my $match = Bugzilla->params->{'emailregexp'};
-    my $email = $addr . Bugzilla->params->{'emailsuffix'};
     # This regexp follows RFC 2822 section 3.4.1.
     my $addr_spec = $Email::Address::addr_spec;
     # RFC 2822 section 2.1 specifies that email addresses must
     # be made of US-ASCII characters only.
     # Email::Address::addr_spec doesn't enforce this.
-    my $ret = ($addr =~ /$match/ && $email !~ /\P{ASCII}/ && $email =~ /^$addr_spec$/);
+    my $ret = ($email =~ /$match/ && $email !~ /\P{ASCII}/ && $email =~ /^$addr_spec$/);
     if ($ret) {
         # We assume these checks to suffice to consider the address untainted.
         trick_taint($_[0]);
@@ -660,8 +659,7 @@ sub check_email_syntax {
     my ($addr) = @_;
 
     unless (validate_email_syntax(@_)) {
-        my $email = $addr . Bugzilla->params->{'emailsuffix'};
-        ThrowUserError('illegal_email_address', { addr => $email });
+        ThrowUserError('illegal_email_address', { addr => $addr });
     }
 }
 

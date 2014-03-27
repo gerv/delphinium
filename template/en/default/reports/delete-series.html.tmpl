@@ -21,8 +21,8 @@
 </p>
 <p>
   [% IF series.creator %]
-    This series has been created by <a href="mailto:[% series.creator.login FILTER html %]">
-    [% series.creator.login FILTER html %]</a>
+    This series has been created by
+    [% series.creator.login FILTER html %]
   [% ELSE %]
     This series has been automatically created by [% terms.Bugzilla %]
   [% END %]

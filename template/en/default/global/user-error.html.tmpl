@@ -55,10 +55,12 @@
   [% ELSIF error == "account_exists" %]
     [% title = "Account Already Exists" %]
     There is already an account with
-    [% IF email %]
-      the login name [% email FILTER html %].
+    [% IF login %]
+      the login name [% login FILTER html %].
+    [% ELSIF email %]
+      the email address [% email FILTER html %].
     [% ELSE %]
-      that login name.
+      that login name or email address.
     [% END %]
 
   [% ELSIF error == "account_locked" %]
@@ -442,6 +444,11 @@
 
   [% ELSIF error == "email_no_body" %]
     Your message did not contain any text, as far as we could tell.
+
+  [% ELSIF error == "email_required" %]
+    [% title = "Email Address Required" %]
+    [% admindocslinks = {'useradmin.html' => 'User administration'} %]
+    You must enter an email address for the new user.
 
   [% ELSIF error == "empty_group_description" %]
     [% title = "The group description cannot be empty" %]
@@ -967,6 +974,12 @@
     [% title = "Invalid Dimensions" %]
     The width or height specified is not a positive integer.
 
+  [% ELSIF error == "invalid_email" %]
+    [% title = "Invalid Email Address" %]
+    The address <tt>[% addr FILTER html %]</tt> is not a valid email address.
+    Either you misspelled it, or the person has not
+    registered for a [% terms.Bugzilla %] account.
+
   [% ELSIF error == "invalid_format" %]
     [% title = "Invalid Format" %]
     The format "[% format FILTER html %]" is invalid (must be one of
@@ -1093,6 +1106,20 @@
     [% title = "Invalid Keyword Name" %]
     You may not use commas or whitespace in a keyword name.
      
+  [% ELSIF error == "login_at_sign_disallowed" %]
+    [% title = "Illegal Character in Login" %]
+    Login names may not contain the "@" sign unless you are setting your
+    login name to be identical to your email address.
+
+  [% ELSIF error == "login_change_during_email_change" %]
+    [% title = "Login Change Not Permitted" %]
+    You may not change your login name while you are in the middle of the
+    process of changing your email address.
+
+  [% ELSIF error == "login_illegal_character" %]
+    [% title = "Illegal Character in Login" %]
+    Login names may not contain whitespace characters.
+
   [% ELSIF error == "login_needed_for_password_change" %]
     [% title = "Login Name Required" %]
     You must enter a login name when requesting to change your password.
@@ -1356,8 +1383,8 @@
     You did not enter your current password correctly.
 
   [% ELSIF error == "old_password_required" %]
-    [% title = "Old Password Required" %]
-    You must enter your old password to change your email address.
+    [% title = "Current Password Required" %]
+    You must enter your current password to change your login name or email address.
 
   [% ELSIF error == "password_change_requests_not_allowed" %]
     [% title = "Password Change Requests Not Allowed" %]
@@ -1372,7 +1399,7 @@
     Your password is currently less than
     [%+ constants.USER_PASSWORD_MIN_LENGTH FILTER html %] characters long,
     which is the new minimum length required for passwords.
-    You must <a href="token.cgi?a=reqpw&amp;loginname=[% locked_user.email FILTER uri %]">
+    You must <a href="token.cgi?a=reqpw&amp;loginname=[% locked_user.login FILTER uri %]">
     request a new password</a> in order to log in again.
 
   [% ELSIF error == "password_too_short" %]
@@ -1781,6 +1808,11 @@
     [% title = "Login Name Required" %]
     [% admindocslinks = {'useradmin.html' => 'User administration'} %]
     You must enter a login name for the new user.
+
+  [% ELSIF error == "email_required" %]
+    [% title = "Email Address Required" %]
+    [% admindocslinks = {'useradmin.html' => 'User administration'} %]
+    You must enter an email address for the new user.
 
   [% ELSIF error == "user_match_failed" %]
     [% title = "Match Failed" %]

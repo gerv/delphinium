@@ -34,7 +34,7 @@ use URI::QueryParam;
 
 use base qw(Bugzilla::Object Exporter);
 @Bugzilla::User::EXPORT = qw(is_available_username
-    login_to_id user_id_to_login validate_password
+    login_to_id user_id_to_login email_to_id validate_password
     USER_MATCH_MULTIPLE USER_MATCH_FAILED USER_MATCH_SUCCESS
     MATCH_SKIP_CONFIRM
 );
@@ -51,8 +51,9 @@ use constant MATCH_SKIP_CONFIRM  => 1;
 
 use constant DEFAULT_USER => {
     'userid'         => 0,
-    'realname'       => '',
     'login_name'     => '',
+    'email'          => '',
+    'realname'       => '',
     'showmybugslink' => 0,
     'disabledtext'   => '',
     'disable_mail'   => 0,
@@ -70,6 +71,7 @@ sub DB_COLUMNS {
     return (
         'profiles.userid',
         'profiles.login_name',
+        'profiles.email',
         'profiles.realname',
         'profiles.mybugslink AS showmybugslink',
         'profiles.disabledtext',
@@ -89,6 +91,7 @@ use constant VALIDATORS => {
     disable_mail  => \&_check_disable_mail,
     disabledtext  => \&_check_disabledtext,
     login_name    => \&check_login_name,
+    email         => \&check_email,
     realname      => \&_check_realname,
     extern_id     => \&_check_extern_id,
     is_enabled    => \&_check_is_enabled, 
@@ -100,6 +103,7 @@ sub UPDATE_COLUMNS {
         disable_mail
         disabledtext
         login_name
+        email
         realname
         extern_id
         is_enabled
@@ -155,9 +159,13 @@ sub update {
     my $changes = $self->SUPER::update(@_);
     my $dbh = Bugzilla->dbh;
 
-    if (exists $changes->{login_name}) {
-        # Delete all the tokens related to the userid
-        $dbh->do('DELETE FROM tokens WHERE userid = ?', undef, $self->id)
+    if (exists $changes->{email}) {
+        # If we changed the email, silently delete any tokens except the one
+        # to restore the original email.
+        $dbh->do(q{DELETE FROM tokens
+                    WHERE tokentype != 'emailold'
+                      AND userid = ?},
+                 undef, $self->id)
           unless $options->{keep_tokens};
         # And rederive regex groups
         $self->derive_regexp_groups();
@@ -202,20 +210,39 @@ sub _check_extern_id {
 # This is public since createaccount.cgi needs to use it before issuing
 # a token for account creation.
 sub check_login_name {
-    my ($invocant, $name) = @_;
-    $name = trim($name);
-    $name || ThrowUserError('user_login_required');
-    check_email_syntax($name);
+    my ($invocant, $login) = @_;
+    $login = trim($login);
+    $login || ThrowUserError('user_login_required');
+
+    # Any login name is valid; we use it in placeholders only
+    trick_taint($login);
 
     # Check the name if it's a new user, or if we're changing the name.
-    if (!ref($invocant) || lc($invocant->login) ne lc($name)) {
-        my @params = ($name);
-        push(@params, $invocant->login) if ref($invocant);
-        is_available_username(@params)
-            || ThrowUserError('account_exists', { email => $name });
+    if (!ref($invocant) || lc($invocant->login) ne lc($login)) {
+        is_available_username($login)
+            || ThrowUserError('account_exists', { login => $login });
     }
 
-    return $name;
+    return $login;
+}
+
+# This is public since createaccount.cgi needs to use it before issuing
+# a token for account creation.
+sub check_email {
+    my ($invocant, $email) = @_;
+    $email = trim($email);
+    $email || ThrowUserError('email_required');
+    
+    validate_email_syntax($email)
+        || ThrowUserError('illegal_email_address', { addr => $email });
+
+    # Check the email if it's a new user, or if we're changing the email.
+    if (!ref($invocant) || $invocant->email ne $email) {
+        is_available_email($email)
+            || ThrowUserError('account_exists', { email => $email });
+    }
+
+    return $email;
 }
 
 sub _check_password {
@@ -257,6 +284,13 @@ sub set_login {
     delete $self->{nick};
 }
 
+sub set_email {
+    my ($self, $email) = @_;
+    $self->set('email', $email);
+    $self->set_login($email) if Bugzilla->params->{'use_email_as_login'};
+    delete $self->{identity};
+}
+
 sub set_name {
     my ($self, $name) = @_;
     $self->set('realname', $name);
@@ -295,7 +329,7 @@ sub update_last_seen_date {
 sub name  { $_[0]->{realname};   }
 sub login { $_[0]->{login_name}; }
 sub extern_id { $_[0]->{extern_id}; }
-sub email { $_[0]->login . Bugzilla->params->{'emailsuffix'}; }
+sub email { $_[0]->{email}; }
 sub disabledtext { $_[0]->{'disabledtext'}; }
 sub is_enabled { $_[0]->{'is_enabled'} ? 1 : 0; }
 sub showmybugslink { $_[0]->{showmybugslink}; }
@@ -325,8 +359,11 @@ sub authorizer {
     return $self->{authorizer};
 }
 
-# Generate a string to identify the user by name + login if the user
-# has a name or by login only if she doesn't.
+# Generate a string to identify the user by name + nick if the user
+# has a name or by nick only if they don't.
+#
+# See also get_userlist(), which constructs pseudo-Bugzilla::Users, including
+# the 'identity' value.
 sub identity {
     my $self = shift;
 
@@ -334,7 +371,7 @@ sub identity {
 
     if (!defined $self->{identity}) {
         $self->{identity} = 
-          $self->name ? $self->name . " <" . $self->login. ">" : $self->login;
+          $self->name ? $self->name . " (" . $self->login. ")" : $self->login;
     }
 
     return $self->{identity};
@@ -346,7 +383,12 @@ sub nick {
     return "" unless $self->id;
 
     if (!defined $self->{nick}) {
-        $self->{nick} = (split(/@/, $self->login, 2))[0];
+        if (Bugzilla->params->{use_email_as_login}) {
+            $self->{nick} = (split(/@/, $self->email, 2))[0];
+        }
+        else {
+            $self->{nick} = $self->login;
+        }
     }
 
     return $self->{nick};
@@ -1292,7 +1334,7 @@ sub derive_regexp_groups {
                                          AND isbless = 0
                                          AND grant_type = ?});
     while (my ($group, $regexp, $present) = $sth->fetchrow_array()) {
-        if (($regexp ne '') && ($self->login =~ m/$regexp/i)) {
+        if (($regexp ne '') && ($self->email =~ m/$regexp/i)) {
             $group_insert->execute($id, $group, GRANT_REGEXP) unless $present;
         } else {
             $group_delete->execute($id, $group, GRANT_REGEXP) if $present;
@@ -1355,8 +1397,8 @@ sub can_bless {
 }
 
 sub match {
-    # Generates a list of users whose login name (email address) or real name
-    # matches a substring or wildcard.
+    # Generates a list of users whose login name or real name matches a
+    # substring or wildcard.
     # This is also called if matches are disabled (for error checking), but
     # in this case only the exact match code will end up running.
 
@@ -1388,9 +1430,9 @@ sub match {
             $query .= "INNER JOIN user_group_map
                                ON user_group_map.user_id = profiles.userid ";
         }
-        $query .= "WHERE ("
-            . $dbh->sql_istrcmp('login_name', '?', "LIKE") . " OR " .
-              $dbh->sql_istrcmp('realname', '?', "LIKE") . ") ";
+        $query .= "WHERE (" .
+              $dbh->sql_istrcmp('login_name', '?', "LIKE") . " OR " .
+              $dbh->sql_istrcmp('realname',   '?', "LIKE") . ") ";
         if (Bugzilla->params->{'usevisibilitygroups'}) {
             $query .= "AND isbless = 0 " .
                       "AND group_id IN(" .
@@ -1405,11 +1447,19 @@ sub match {
         @users = @{Bugzilla::User->new_from_list($user_ids)};
     }
     else {    # try an exact match
-        # Exact matches don't care if a user is disabled.
+        # Exact matches don't care if a user is disabled, and match
+        # login names only.
         trick_taint($str);
+
+        # Special handling for "@" and ":" prefixes. We strip them off
+        # before matching, so ":gerv" or "@gerv" exact-matches user "gerv"
+        # and that user will be the only result returned.
+        my $unprefixed_str = $str;
+        $unprefixed_str =~ s/^[@\:]//;
+        
         my $user_id = $dbh->selectrow_array('SELECT userid FROM profiles
                                              WHERE ' . $dbh->sql_istrcmp('login_name', '?'),
-                                             undef, $str);
+                                             undef, $unprefixed_str);
 
         push(@users, new Bugzilla::User($user_id)) if $user_id;
     }
@@ -1862,7 +1912,7 @@ sub get_userlist {
     while (my($login, $name, $visible) = $sth->fetchrow_array) {
         push @userlist, {
             login => $login,
-            identity => $name ? "$name <$login>" : $login,
+            identity => $name ? "$name ($login)" : $login,
             visible => $visible,
         };
     }
@@ -1972,16 +2022,26 @@ sub account_ip_login_failures {
 ###############
 
 sub is_available_username {
-    my ($username, $old_username) = @_;
+    my ($username) = @_;
 
     if(login_to_id($username) != 0) {
         return 0;
     }
 
+    return 1;
+}
+
+sub is_available_email {
+    my ($email, $old_email) = @_;
+
+    if(email_to_id($email) != 0) {
+        return 0;
+    }
+
     my $dbh = Bugzilla->dbh;
-    # $username is safe because it is only used in SELECT placeholders.
-    trick_taint($username);
-    # Reject if the new login is part of an email change which is
+    # $email is safe because it is only used in SELECT placeholders.
+    trick_taint($email);
+    # Reject if the new email is part of an email change which is
     # still in progress
     #
     # substring/locate stuff: bug 165221; this used to use regexes, but that
@@ -1997,13 +2057,13 @@ sub is_available_username {
              OR (tokentype = 'emailnew'
                 AND SUBSTRING(eventdata, (" .
                     $dbh->sql_position(q{':'}, 'eventdata') . "+ 1), LENGTH(eventdata)) = ?)",
-         undef, ($username, $username));
+         undef, ($email, $email));
 
     if ($eventdata) {
         # Allow thru owner of token
-        if ($old_username
-            && (($tokentype eq 'emailnew' && $eventdata eq "$old_username:$username")
-                || ($tokentype eq 'emailold' && $eventdata eq "$username:$old_username")))
+        if ($old_email
+            && (($tokentype eq 'emailnew' && $eventdata eq "$old_email:$email")
+                || ($tokentype eq 'emailold' && $eventdata eq "$email:$old_email")))
         {
             return 1;
         }
@@ -2025,18 +2085,19 @@ sub check_account_creation_enabled {
 }
 
 sub check_and_send_account_creation_confirmation {
-    my ($self, $login) = @_;
+    my ($self, $login, $email) = @_;
 
     $login = $self->check_login_name($login);
+    $email = $self->check_email($email);
     my $creation_regexp = Bugzilla->params->{'createemailregexp'};
 
-    if ($login !~ /$creation_regexp/i) {
+    if ($email !~ /$creation_regexp/i) {
         ThrowUserError('account_creation_restricted');
     }
 
     # Create and send a token for this new account.
     require Bugzilla::Token;
-    Bugzilla::Token::issue_new_user_account_token($login);
+    Bugzilla::Token::issue_new_user_account_token($login, $email);
 }
 
 # This is used in a few performance-critical areas where we don't want to
@@ -2066,9 +2127,31 @@ sub login_to_id {
 
     if ($user_id) {
         return $user_id;
-    } elsif ($throw_error) {
+    }
+    elsif ($throw_error) {
         ThrowUserError('invalid_username', { name => $login });
-    } else {
+    }
+    else {
+        return 0;
+    }
+}
+
+sub email_to_id {
+    my ($email, $throw_error) = @_;
+    my $dbh = Bugzilla->dbh;
+    # No need to validate $email -- it will be used by the following SELECT
+    # statement only, so it's safe to simply trick_taint.
+    trick_taint($email);
+    my $user_id = $dbh->selectrow_array("SELECT userid FROM profiles WHERE " .
+                                        $dbh->sql_istrcmp('email', '?'),
+                                        undef, $email);
+    if ($user_id) {
+        return $user_id;
+    }
+    elsif ($throw_error) {
+        ThrowUserError('invalid_email', { addr => $email });
+    }
+    else {
         return 0;
     }
 }
@@ -2129,10 +2212,11 @@ Bugzilla::User - Object for a Bugzilla user
       $user->get_selectable_classifications;
 
   # Class Functions
-  $user = Bugzilla::User->create({ 
-      login_name    => $username, 
-      realname      => $realname, 
-      cryptpassword => $plaintext_password, 
+  $user = Bugzilla::User->create({
+      login_name    => $username,
+      email         => $email,
+      realname      => $realname,
+      cryptpassword => $plaintext_password,
       disabledtext  => $disabledtext,
       disable_mail  => 0});
 
@@ -2289,12 +2373,11 @@ Returns the userid for this user.
 
 =item C<login>
 
-Returns the login name for this user.
+Returns the login name (nick) for this user.
 
 =item C<email>
 
-Returns the user's email address. Currently this is the same value as the
-login.
+Returns the user's email address.
 
 =item C<name>
 
@@ -2313,10 +2396,9 @@ otherwise.
 
 =item C<nick>
 
-Returns a user "nickname" -- i.e. a shorter, not-necessarily-unique name by
-which to identify the user. Currently the part of the user's email address
-before the at sign (@), but that could change, especially if we implement
-usernames not dependent on email address.
+Usually, this is an alias for C<login>.
+If email addresses are used as logins, though, then this is the part of the
+user's email address before the at sign (@).
 
 =item C<authorizer>
 
@@ -2615,7 +2697,8 @@ called "statically," just like a normal procedural function.
 The same as L<Bugzilla::Object/create>.
 
 Params: login_name - B<Required> The login name for the new user.
-        realname - The full name for the new user.
+        email - B<Required> The email address of the new user.
+        realname - The full name of the new user.
         cryptpassword  - B<Required> The password for the new user.
             Even though the name says "crypt", you should just specify
             a plain-text password. If you specify '*', the user will not
@@ -2636,7 +2719,7 @@ user with that username. Returns a C<Bugzilla::User> object.
 Checks that users can create new user accounts, and throws an error
 if user creation is disabled.
 
-=item C<check_and_send_account_creation_confirmation($login)>
+=item C<check_and_send_account_creation_confirmation($login, $email)>
 
 If the user request for a new account passes validation checks, an email
 is sent to this user for confirmation. Otherwise an error is thrown
@@ -2647,19 +2730,26 @@ indicating why the request has been rejected.
 Returns a boolean indicating whether or not the supplied username is
 already taken in Bugzilla.
 
-Params: $username (scalar, string) - The full login name of the username 
-            that you are checking.
-        $old_username (scalar, string) - If you are checking an email-change
-            token, insert the "old" username that the user is changing from,
+Params: $username (scalar, string) - The full login name that you are
+            checking.
+
+=item C<is_available_email>
+
+Returns a boolean indicating whether or not the supplied email address is
+already taken in Bugzilla.
+
+Params: $email (scalar, string) - The email address that you are checking.
+        $old_email (scalar, string) - If you are checking an email-change
+            token, insert the "old" address that the user is changing from,
             here. Then, as long as it's the right user for that token, he 
-            can change his username to $username. (That is, this function
+            can change his email to $email. (That is, this function
             will return a boolean true value).
 
 =item C<login_to_id($login, $throw_error)>
 
 Takes a login name of a Bugzilla user and changes that into a numeric
 ID for that user. This ID can then be passed to Bugzilla::User::new to
-create a new user.
+create a new user object.
 
 If no valid user exists with that login name, then the function returns 0.
 However, if $throw_error is set, the function will throw a user error
@@ -2676,6 +2766,11 @@ if you need more information about the user than just their ID.
 Returns the login name of the user account for the given user ID. If no
 valid user ID is given or the user has no entry in the profiles table,
 we return an empty string.
+
+=item C<email_to_id($email, $throw_error)>
+
+Same as C<login_to_id>, but operates on an email address instead of a login
+name.
 
 =item C<validate_password($passwd1, $passwd2)>
 
@@ -2732,5 +2827,41 @@ is done with the data.
 =back
 
 =head1 SEE ALSO
+
+=item set_disable_mail
+
+=item has_audit_entries
+
+=item groups_with_icon
+
+=item check_login_name
+
+=item check_email
+
+=item set_extern_id
+
+=item mail_settings
+
+=item email_disabled
+
+=item update
+
+=item is_timetracker
+
+=item is_enabled
+
+=item queryshare_groups_as_string
+
+=item set_login
+
+=item set_email
+
+=item set_password
+
+=item last_seen_date
+
+=item set_disabledtext
+
+=item update_last_seen_date
 
 L<Bugzilla|Bugzilla>

@@ -307,16 +307,34 @@ sub create_admin {
     return if $admin_count;
 
     my %answer    = %{Bugzilla->installation_answers};
-    my $login     = $answer{'ADMIN_EMAIL'};
+    my $login     = $answer{'ADMIN_LOGIN'};
+    my $email     = $answer{'ADMIN_EMAIL'};
     my $password  = $answer{'ADMIN_PASSWORD'};
     my $full_name = $answer{'ADMIN_REALNAME'};
 
-    if (!$login || !$password || !$full_name) {
+    if (!$login || !$email || !$password || !$full_name) {
         say "\n" . get_text('install_admin_setup') . "\n";
     }
 
-    while (!$login) {
+    while (!$email) {
         print get_text('install_admin_get_email') . ' ';
+        $email = <STDIN>;
+        chomp $email;
+        eval { Bugzilla::User->check_email($email); };
+        if ($@) {
+            print $@ . "\n";
+            undef $email;
+        }
+    }
+
+    # Make sure the just-inputted email address is used as login when
+    # necessary. (This condition can happen with a new DB in an old install.)
+    if (Bugzilla->params->{'use_email_as_login'}) {
+        $login = $email;
+    }
+
+    while (!$login) {
+        print get_text('install_admin_get_login') . ' ';
         $login = <STDIN>;
         chomp $login;
         eval { Bugzilla::User->check_login_name($login); };
@@ -338,6 +356,7 @@ sub create_admin {
     }
 
     my $admin = Bugzilla::User->create({ login_name    => $login, 
+                                         email         => $email,
                                          realname      => $full_name,
                                          cryptpassword => $password });
     make_admin($admin);

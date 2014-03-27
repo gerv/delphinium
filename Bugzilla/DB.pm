@@ -560,7 +560,7 @@ sub bz_drop_foreign_keys {
 # Schema Modification Methods
 #####################################################################
 
-sub bz_add_column {
+sub _bz_add_column_raw {
     my ($self, $table, $name, $new_def, $init_value) = @_;
 
     # You can't add a NOT NULL column to a table with
@@ -579,7 +579,7 @@ sub bz_add_column {
     if (!$current_def) {
         my @statements = $self->_bz_real_schema->get_add_column_ddl(
             $table, $name, $new_def, 
-            defined $init_value ? $self->quote($init_value) : undef);
+            defined $init_value ? $init_value : undef);
         print get_text('install_column_add',
                        { column => $name, table => $table }) . "\n"
             if Bugzilla->usage_mode == USAGE_MODE_CMDLINE;
@@ -603,6 +603,19 @@ sub bz_add_column {
         $self->_bz_real_schema->set_column($table, $name, $new_def);
         $self->_bz_store_real_schema;
     }
+}
+
+sub bz_add_column {
+    my ($self, $table, $name, $new_def, $init_value) = @_;
+
+    return $self->_bz_add_column_raw($table, $name, $new_def,
+        defined $init_value ? $self->quote($init_value) : undef);
+}
+
+sub bz_add_duplicate_column {
+    my ($self, $table, $name, $new_def, $init_value) = @_;
+
+    return $self->_bz_add_column_raw($table, $name, $new_def, $init_value);
 }
 
 sub bz_add_fk {
@@ -1519,6 +1532,7 @@ Bugzilla::DB - Database access routines, using L<DBI>
 
   # Schema Modification
   $dbh->bz_add_column($table, $name, \%definition, $init_value);
+  $dbh->bz_add_duplicate_column($table, $name, \%definition, $init_column);
   $dbh->bz_add_index($table, $name, $definition);
   $dbh->bz_add_table($name);
   $dbh->bz_drop_index($table, $name);
@@ -2289,13 +2303,14 @@ C<Bugzilla::DB::Schema::ABSTRACT_SCHEMA>.
 
 =over
 
-=item C<bz_add_column>
+=item C<bz_add_column>, C<bz_add_duplicate_column>
 
 =over
 
 =item B<Description>
 
-Adds a new column to a table in the database. Prints out a brief statement 
+Adds a new column to a table in the database, either with a set initial value,
+or initialized from the value of another column. Prints out a brief statement 
 that it did so, to stdout. Note that you cannot add a NOT NULL column that 
 has no default -- the database won't know what to set all the NULL
 values to.
@@ -2312,6 +2327,8 @@ values to.
 
 =item C<$init_value> (optional) - An initial value to set the column
 to. Required if your column is NOT NULL and has no DEFAULT set.
+For C<bz_add_duplicate_column>, this specifies a column of the same table;
+for C<bz_add_column> it's a fixed value.
 
 =back
 

@@ -706,6 +706,23 @@ sub update_table_definitions {
     # 2013-02-04 dkl@mozilla.com - Bug 824346
     _fix_flagclusions_indexes();
 
+    # 2014-XX-XX wurblzap@gmail.com and gerv@gerv.net - Bug 425663
+    # Split login_name into login_name and email columns
+    $dbh->bz_add_duplicate_column('profiles', 'email',
+                                  {TYPE => 'varchar(255)', NOTNULL => 1},
+                                  'login_name');
+    # This change obsoletes the 'emailsuffix' parameter. If it is in use,
+    # append it to all the values in the 'email' column.
+    my $suffix = $old_params->{'emailsuffix'};
+    if ($suffix) {
+        $dbh->do("UPDATE profiles SET email = " .
+                                        $dbh->sql_string_concat('email', '?'),
+                 undef, $suffix);
+    }
+    
+    $dbh->bz_add_index('profiles', 'profiles_email_idx',
+                       {TYPE => 'UNIQUE', FIELDS => ['email']});
+
     ################################################################
     # New --TABLE-- changes should go *** A B O V E *** this point #
     ################################################################

@@ -10,7 +10,6 @@
   # none
   # 
   # Param("maintainer") is used to display the maintainer's email.
-  # Param("emailsuffix") is used to pre-fill the email field.
   #%]
 
 [% title = BLOCK %]
@@ -23,17 +22,24 @@
 
 <p>
   To create a [% terms.Bugzilla %] account, all you need to do is to enter
-[% IF Param('emailsuffix') == '' %]
+  [% IF !Param('use_email_as_login') %]
+    a login name of your choice and
+  [% END %]
   a legitimate email address.
-[% ELSE %]
-  an account name which when combined with [% Param('emailsuffix') %]
-  corresponds to an address where you receive email.
-[% END %]
   You will receive an email at this address to confirm the creation of your
   account. <b>You will not be able to log in until you receive the email.</b>
   If it doesn't arrive within a reasonable amount of time, you may contact
   the maintainer of this [% terms.Bugzilla %] installation
   at <a href="mailto:[% Param("maintainer") %]">[% Param("maintainer") %]</a>.
+</p>
+
+<p>
+  If you already have an account and want to change your
+  [% IF Param('allowemailchange') %]
+  email address or
+  [% END %]
+  login name,
+  you can change it from the Preferences page after logging in.
 </p>
 
 <p>
@@ -45,13 +51,16 @@
   able to see it.</b>
 </p>
 
-[% IF Param('createemailregexp') == '.*' && Param('emailsuffix') == '' %]
+[% IF Param('createemailregexp') == '.*' %]
 <p>
   <b>PRIVACY NOTICE:</b> [% terms.Bugzilla %] is an open [% terms.bug %]
-  tracking system. Activity on most [% terms.bugs %], including email
-  addresses, will be visible to registered users. We <b>recommend</b> using a
-  secondary account or free web email service (such as Gmail, Yahoo,
-  Hotmail, or similar) to avoid receiving spam at your primary email address.
+  tracking system. Activity on most [% terms.bugs %] will be visible to
+  registered users.
+  [% IF Param('use_email_as_login') %]
+    That includes email addresses. We <b>recommend</b> using a
+    secondary account or free web email service (such as Gmail, Yahoo,
+    Hotmail, or similar) to avoid receiving spam at your primary email address.
+  [% END %]
 </p>
 [% END %]
 
@@ -62,12 +71,23 @@
         <b>Email address:</b>
       </td>
       <td>
-        <input size="35" id="login" name="login">
-        [% Param('emailsuffix') FILTER html %]
+        <input size="35" id="email" name="email" autofocus required type="email">
       </td>
     </tr>
+  
+  [% IF !Param('use_email_as_login') %]
+    <tr>
+      <td align="right">
+        <b>Login:</b>
+      </td>
+      <td>
+        <input size="35" id="login" name="login" required>
+      </td>
+    </tr>
+  [% END %]
   </table>
   <br>
+
   <input type="hidden" id="token" name="token" value="[% issue_hash_token(['create_account']) FILTER html %]">
   <input type="submit" id="send" value="Send">
 </form>

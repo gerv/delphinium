@@ -104,17 +104,21 @@
   emailregexpdesc => "This describes in English words what kinds of legal addresses " _
                      "are allowed by the <tt>emailregexp</tt> param.",
 
-  emailsuffix => "This is a string to append to any email addresses when actually " _
-                 "sending mail to that address. It is useful if you have changed " _
-                 "the <tt>emailregexp</tt> param to only allow local usernames, " _
-                 "but you want the mail to be delivered to username@my.local.hostname.",
-
   createemailregexp => "This defines the (case-insensitive) regexp to use for email addresses that are " _
                        "permitted to self-register using a 'New Account' feature. The " _
                        "default (.*) permits any account matching the emailregexp " _
                        "to be created. If this parameter is left blank, no users " _
                        "will be permitted to create their own accounts and all accounts " _
                        "will have to be created by an administrator.",
+
+  use_email_as_login => "If switched on, users will log in with the email " _
+                        "address of the " _
+                        "account. If switched off, they will log in with
+                        a separate identifier.<br>" _
+                        "<strong>Switching this from off to on results in " _
+                        "the destructive act of the login " _
+                        "name for all users being set to their email " _
+                        "address!</strong>",
 
   password_complexity =>
     "Set the complexity required for passwords. In all cases must the passwords " _

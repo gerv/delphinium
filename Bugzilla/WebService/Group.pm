@@ -143,7 +143,7 @@ name of the group.
 
 =item C<user_regexp>
 
-C<string> A regular expression. Any user whose Bugzilla username matches
+C<string> A regular expression. Any user whose Bugzilla email address matches
 this regular expression will automatically be granted membership in this group.
 
 =item C<is_active> 

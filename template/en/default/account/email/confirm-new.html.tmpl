@@ -27,6 +27,12 @@
   <input type="hidden" name="t" value="[% token FILTER html %]">
   <input type="hidden" name="a" value="confirm_new_account">
   <table>
+    [% IF !Param('use_email_as_login') %]
+      <tr>
+        <th>Login:</th>
+        <td>[% login FILTER html %]</td>
+      </tr>
+    [% END %]
     <tr>
       <th align="right">Email Address:</th>
       <td>[% email FILTER html %]</td>

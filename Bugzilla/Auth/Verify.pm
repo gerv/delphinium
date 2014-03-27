@@ -33,10 +33,15 @@ sub create_or_update_user {
     my $dbh = Bugzilla->dbh;
 
     my $extern_id = $params->{extern_id};
+    my $email     = $params->{email};
     my $username  = $params->{bz_username} || $params->{username};
     my $password  = $params->{password} || '*';
     my $real_name = $params->{realname} || '';
     my $user_id   = $params->{user_id};
+
+    if ($email && Bugzilla->params->{use_email_as_login}) {
+        $username = $email;
+    }
 
     # A passed-in user_id always overrides anything else, for determining
     # what account we should return.
@@ -65,10 +70,10 @@ sub create_or_update_user {
         # then we have to create the user. This happens when we're
         # passed only a username, and that username doesn't exist already.
         if ($username && !$username_user_id && !$extern_user_id) {
-            validate_email_syntax($username)
+            validate_email_syntax($email)
               || return { failure => AUTH_ERROR, 
                           error   => 'auth_invalid_email',
-                          details => {addr => $username} };
+                          details => {addr => $email} };
             # Usually we'd call validate_password, but external authentication
             # systems might follow different standards than ours. So in this
             # place here, we call trick_taint without checks.
@@ -78,6 +83,7 @@ sub create_or_update_user {
             # that is too involved to be done right now.
             my $user = Bugzilla::User->create({ 
                 login_name    => $username, 
+                email         => $email,
                 cryptpassword => $password,
                 realname      => $real_name});
             $username_user_id = $user->id;
@@ -104,10 +110,13 @@ sub create_or_update_user {
 
     # Now that we have a valid User, we need to see if any data has to be
     # updated.
-    if ($username && lc($user->login) ne lc($username)) {
-        validate_email_syntax($username)
+    if ($email && lc($user->email) ne lc($email)) {
+        validate_email_syntax($email)
           || return { failure => AUTH_ERROR, error => 'auth_invalid_email',
-                      details => {addr => $username} };
+                      details => {addr => $email} };
+        $user->set_email($email);
+    }
+    if ($username && lc($user->login) ne lc($username)) {
         $user->set_login($username);
     }
     if ($real_name && $user->name ne $real_name) {

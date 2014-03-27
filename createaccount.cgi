@@ -27,15 +27,19 @@ print $cgi->header();
 
 $user->check_account_creation_enabled;
 my $login = $cgi->param('login');
+my $email = $cgi->param('email');
 
-if (defined($login)) {
+$login = $email if Bugzilla->params->{'use_email_as_login'};
+
+if (defined($email) && defined($login)) {
     # Check the hash token to make sure this user actually submitted
     # the create account form.
     my $token = $cgi->param('token');
     check_hash_token($token, ['create_account']);
 
-    $user->check_and_send_account_creation_confirmation($login);
+    $user->check_and_send_account_creation_confirmation($login, $email);
     $vars->{'login'} = $login;
+    $vars->{'email'} = $email;
 
     $template->process("account/created.html.tmpl", $vars)
       || ThrowTemplateError($template->error());

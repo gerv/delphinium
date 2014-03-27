@@ -122,8 +122,8 @@ sub requestChangePassword {
     my $login_name = $cgi->param('loginname')
       or ThrowUserError("login_needed_for_password_change");
 
-    check_email_syntax($login_name);
-    my $user = Bugzilla::User->check($login_name);
+    login_to_id($login_name, 'throw_error_if_not_exist');    
+    my $user = new Bugzilla::User({ name => $login_name });
 
     # Make sure the user account is active.
     if (!$user->is_enabled) {
@@ -214,16 +214,18 @@ sub changeEmail {
 
     # The new email address should be available as this was 
     # confirmed initially so cancel token if it is not still available
-    if (! is_available_username($new_email,$old_email)) {
+    if (!is_available_email($new_email, $old_email)) {
         $vars->{'email'} = $new_email; # Needed for Bugzilla::Token::Cancel's mail
         Bugzilla::Token::Cancel($token, "account_exists", $vars);
         ThrowUserError("account_exists", { email => $new_email } );
     } 
 
-    # Update the user's login name in the profiles table.
-    $user->set_login($new_email);
-    $user->update({ keep_session => 1, keep_tokens => 1 });
+    # Delete the tokens for this email change and update the user's email
+    # address. (Have to do it in that order, otherwise set_email fails because
+    # the email is in mid-change.)
     delete_token($token);
+    $user->set_email($new_email);
+    $user->update({ keep_session => 1, keep_tokens => 1 });
     $dbh->do(q{DELETE FROM tokens WHERE userid = ?
                AND tokentype = 'emailnew'}, undef, $userid);
 
@@ -233,7 +235,7 @@ sub changeEmail {
     print $cgi->header();
 
     # Let the user know their email address has been changed.
-    $vars->{'message'} = "login_changed";
+    $vars->{'message'} = "email_changed";
 
     $template->process("global/message.html.tmpl", $vars)
       || ThrowTemplateError($template->error());
@@ -245,32 +247,41 @@ sub cancelChangeEmail {
 
     $dbh->bz_start_transaction();
 
-    my ($old_email, $new_email) = split(/:/,$eventdata);
-
-    if ($tokentype eq "emailold") {
-        $vars->{'message'} = "emailold_change_canceled";
-        my $user = Bugzilla::User->check({ id => $userid });
-
-        # check to see if it has been altered
-        if ($user->login ne $old_email) {
-            $user->set_login($old_email);
-            $user->update({ keep_session => 1 });
-
-            $vars->{'message'} = "email_change_canceled_reinstated";
-        } 
-    } 
-    else {
-        $vars->{'message'} = 'email_change_canceled'
-     }
+    my ($old_email, $new_email) = split(/:/, $eventdata);
+    my $user = new Bugzilla::User($userid);
+    my $reinstatiation_needed = 0;
 
     $vars->{'old_email'} = $old_email;
     $vars->{'new_email'} = $new_email;
-    Bugzilla::Token::Cancel($token, $vars->{'message'}, $vars);
 
+    # Determine which message to display when canceling the token, and whether
+    # to reinstate the original email address.
+    if ($tokentype eq 'emailold') {
+        if ($user->email ne $old_email) {
+            $reinstatiation_needed = 1;
+            $vars->{'message'} = "email_change_canceled_reinstated";
+        }
+        else {
+            $vars->{'message'} = 'emailold_change_canceled';
+        }
+    }
+    else {
+        $vars->{'message'} = 'email_change_canceled'
+    }
+    
+    # Now cancel the token, and delete all other email change tokens.
+    Bugzilla::Token::Cancel($token, $vars->{'message'}, $vars);
     $dbh->do(q{DELETE FROM tokens WHERE userid = ?
                AND tokentype = 'emailold' OR tokentype = 'emailnew'},
              undef, $userid);
 
+    # Reinstate the original email address, if necessary.
+    if ($reinstatiation_needed) {
+        $user->set_email($old_email);
+        $user->update();
+    } 
+
+    # Ok, done.
     $dbh->bz_commit_transaction();
 
     # Return HTTP response headers.
@@ -281,12 +292,14 @@ sub cancelChangeEmail {
 }
 
 sub request_create_account {
-    my ($date, $login_name, $token) = @_;
+    my ($date, $event_data, $token) = @_;
 
     Bugzilla->user->check_account_creation_enabled;
 
     $vars->{'token'} = $token;
-    $vars->{'email'} = $login_name . Bugzilla->params->{'emailsuffix'};
+    my ($email, $login) = split(':', $event_data);
+    $vars->{'login'} = $login;
+    $vars->{'email'} = $email;
     $vars->{'expiration_ts'} = ctime(str2time($date) + MAX_TOKEN_AGE * 86400);
 
     print $cgi->header();
@@ -295,18 +308,20 @@ sub request_create_account {
 }
 
 sub confirm_create_account {
-    my ($login_name, $token) = @_;
+    my ($event_data, $token) = @_;
 
     Bugzilla->user->check_account_creation_enabled;
 
+    my ($email, $login) = split(':', $event_data);
     my $password = $cgi->param('passwd1') || '';
     validate_password($password, $cgi->param('passwd2') || '');
     # Make sure that these never show up anywhere in the UI.
     $cgi->delete('passwd1', 'passwd2');
 
     my $otheruser = Bugzilla::User->create({
-        login_name => $login_name, 
-        realname   => $cgi->param('realname'), 
+        login_name    => $login,
+        email         => $email,
+        realname      => $cgi->param('realname'),
         cryptpassword => $password});
 
     # Now delete this token.
@@ -328,10 +343,10 @@ sub confirm_create_account {
 }
 
 sub cancel_create_account {
-    my ($login_name, $token) = @_;
+    my ($event_data, $token) = @_;
 
     $vars->{'message'} = 'account_creation_canceled';
-    $vars->{'account'} = $login_name;
+    ($vars->{'email'}, $vars->{'login'}) = split(':', $event_data);
     Bugzilla::Token::Cancel($token, $vars->{'message'});
 
     print $cgi->header();

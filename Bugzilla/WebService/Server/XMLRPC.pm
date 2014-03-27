@@ -28,6 +28,11 @@ BEGIN {
             $value = Bugzilla::WebService::Server->datetime_format_outbound($value);
             $value =~ s/-//g;
         }
+        elsif ($type eq 'email') {
+            $type = 'string';
+            $value = email_filter($value);
+        }
+
         return XMLRPC::Data->type($type)->value($value);
     };
 }

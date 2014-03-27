@@ -50,11 +50,11 @@ sub DoAccount {
            ORDER BY tokentype ASC " . $dbh->sql_limit(1), undef, $user->id);
         if (scalar(@token) > 0) {
             my ($tokentype, $change_date, $eventdata) = @token;
-            $vars->{'login_change_date'} = $change_date;
+            $vars->{'email_change_date'} = $change_date;
 
             if($tokentype eq 'emailnew') {
                 my ($oldemail,$newemail) = split(/:/,$eventdata);
-                $vars->{'new_login_name'} = $newemail;
+                $vars->{'new_email'} = $newemail;
             }
         }
     }
@@ -71,7 +71,8 @@ sub SaveAccount {
     my $oldpassword = $cgi->param('old_password');
     my $pwd1 = $cgi->param('new_password1');
     my $pwd2 = $cgi->param('new_password2');
-    my $new_login_name = trim($cgi->param('new_login_name'));
+    my $new_login = trim($cgi->param('new_login'));
+    my $new_email = trim($cgi->param('new_email'));
 
     if ($user->authorizer->can_change_password
         && ($oldpassword ne "" || $pwd1 ne "" || $pwd2 ne ""))
@@ -95,27 +96,56 @@ sub SaveAccount {
         }
     }
 
+    # This is used only if email and login are separate
+    if ($user->authorizer->can_change_login
+        && $new_login
+        && $user->login ne $new_login)
+    {
+        $oldpassword || ThrowUserError("old_password_required");
+
+        if ($new_login =~ /@/ &&
+            $new_login ne $user->email)
+        {
+            ThrowUserError("login_at_sign_disallowed");
+        }
+        
+        if ($new_login =~ /\s/) {
+            ThrowUserError("login_illegal_character");
+        }
+
+        if (Bugzilla::Token::HasEmailChangeToken($user->id)) {
+            ThrowUserError("login_change_during_email_change");
+        }        
+        
+        is_available_username($new_login)
+                   || ThrowUserError("account_exists", {login => $new_login});
+
+        $user->set_login($new_login);
+    }
+
+    # This is used for the single value if use_email_as_login is true, or for
+    # the email address otherwise.
     if ($user->authorizer->can_change_email
         && Bugzilla->params->{"allowemailchange"}
-        && $new_login_name)
+        && $new_email
+        && $user->email ne $new_email)
     {
-        if ($user->login ne $new_login_name) {
-            $oldpassword || ThrowUserError("old_password_required");
+        $oldpassword || ThrowUserError("old_password_required");
 
-            # Block multiple email changes for the same user.
-            if (Bugzilla::Token::HasEmailChangeToken($user->id)) {
-                ThrowUserError("email_change_in_progress");
-            }
-
-            # Before changing an email address, confirm one does not exist.
-            check_email_syntax($new_login_name);
-            is_available_username($new_login_name)
-              || ThrowUserError("account_exists", {email => $new_login_name});
-
-            Bugzilla::Token::IssueEmailChangeToken($user, $new_login_name);
-
-            $vars->{'email_changes_saved'} = 1;
+        # Block multiple email changes for the same user.
+        if (Bugzilla::Token::HasEmailChangeToken($user->id)) {
+            ThrowUserError("email_change_in_progress");
         }
+
+        # Before changing an email address, confirm one does not exist.
+        check_email_syntax($new_email);
+        
+        is_available_email($new_email)
+                   || ThrowUserError("account_exists", {email => $new_email});
+
+        Bugzilla::Token::IssueEmailChangeToken($user, $new_email);
+
+        $vars->{'email_changes_saved'} = 1;
     }
 
     $user->set_name($cgi->param('realname'));
