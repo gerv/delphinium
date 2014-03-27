@@ -13,3 +13,5 @@ Plack
 CGI::Emulate::PSGI
 CGI::Compile
 Math::Random::ISAAC
+Authen::SASL
+Net::SMTP::SSL
