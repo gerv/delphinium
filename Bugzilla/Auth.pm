@@ -126,7 +126,7 @@ sub extern_id_used {
 }
 
 sub can_change_login {
-    return $_[0]->user_can_create_account;
+    return 0;
 }
 
 sub can_change_email {

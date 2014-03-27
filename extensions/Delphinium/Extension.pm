@@ -13,6 +13,7 @@ use base qw(Bugzilla::Extension);
 use Bugzilla::Extension::Delphinium::Util;
 
 use Bugzilla::Constants;
+use Bugzilla::Util;
 
 our $VERSION = '0.01';
 
@@ -35,5 +36,13 @@ sub bug_check_can_change_field {
         }
     }
 }
+
+sub modify_new_account {
+    my ($self, $args) = @_;
+    my $cgi = $args->{'cgi'};
+    
+    $cgi->param('login', generate_random_password());
+}
+
 
 __PACKAGE__->NAME;

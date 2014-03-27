@@ -14,6 +14,7 @@ use Bugzilla;
 use Bugzilla::Constants;
 use Bugzilla::Error;
 use Bugzilla::Token;
+use Bugzilla::Hook;
 
 # Just in case someone already has an account, let them get the correct footer
 # on an error message. The user is logged out just after the account is
@@ -26,6 +27,11 @@ my $vars = { doc_section => 'myaccount.html' };
 print $cgi->header();
 
 $user->check_account_creation_enabled;
+
+Bugzilla::Hook::process('modify_new_account', {
+    cgi => $cgi
+});
+
 my $login = $cgi->param('login');
 my $email = $cgi->param('email');
 
