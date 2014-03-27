@@ -30,3 +30,7 @@ ignores:
   - .git
 
 # Could add data/params here if we want the params to diverge
+
+requirements:
+  ubuntu:
+    - nano
