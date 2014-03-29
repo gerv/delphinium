@@ -33,6 +33,7 @@
     [% FOREACH name = setting_names %]
       [% default_name = name _ '-isdefault' %]
       [% default_val = settings.${name}.default_value %]
+      [% IF settings.${name}.is_enabled %]
       <tr>
         <td align="right">
           [% setting_descs.$name OR name FILTER html %]
@@ -62,6 +63,7 @@
           [% END %]
         </td>
       </tr>
+    [% END %]
     [% END %]
   </table>
 [% END %]
