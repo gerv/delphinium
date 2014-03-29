@@ -27,10 +27,10 @@ mem: 128M
 # Prevent the local "localconfig" from being synced
 ignores:
   - localconfig
+  - data/params
   - .git
-
-# Could add data/params here if we want the params to diverge
-
+  - data/template
+  
 requirements:
   ubuntu:
     - nano
