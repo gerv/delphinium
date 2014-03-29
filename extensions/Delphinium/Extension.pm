@@ -30,7 +30,7 @@ sub bug_check_can_change_field {
                      = @$args{qw(bug field old_value new_value priv_results)};
 
     # Only moderators may close or reopen issues
-    if ($field eq "bug_status") {
+    if ($field =~ /bug_status|resolution|dup_id/) {
         unless (Bugzilla->user->in_group('moderators')) {
             push @$priv_results, PRIVILEGES_REQUIRED_EMPOWERED;
         }
