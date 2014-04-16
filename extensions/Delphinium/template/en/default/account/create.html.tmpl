@@ -1,0 +1,57 @@
+[%# This Source Code Form is subject to the terms of the Mozilla Public
+  # License, v. 2.0. If a copy of the MPL was not distributed with this
+  # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  #
+  # This Source Code Form is "Incompatible With Secondary Licenses", as
+  # defined by the Mozilla Public License, v. 2.0.
+  #%]
+
+[%# INTERFACE
+  # none
+  # 
+  # Param("maintainer") is used to display the maintainer's email.
+  #%]
+
+[% title = BLOCK %]
+  Create a new [% terms.Bugzilla %] account
+[% END %]
+
+[% PROCESS global/header.html.tmpl
+           title = title
+           onload = "document.forms['account_creation_form'].login.focus();" %]
+
+<p>
+  To create a [% terms.Bugzilla %] account, all you need to do is to enter
+  a legitimate email address.
+  You will receive an email at this address to confirm the creation of your
+  account. <b>You will not be able to log in until you receive the email.</b>
+  If it doesn't arrive within a reasonable amount of time, you may contact
+  the maintainer of this [% terms.Bugzilla %] installation
+  at <a href="mailto:[% Param("maintainer") %]">[% Param("maintainer") %]</a>.
+</p>
+
+<p>
+  This system is set up to provide pseudonymity. Your email address will be
+  kept private from all other users, and you will be allocated a login name
+  which does not reveal who you are. As long as you don't explicitly reveal
+  yourself through what you say, you can remain pseudonymous.
+</p>
+
+<form id="account_creation_form" method="get" action="createaccount.cgi">
+  <table>
+    <tr>
+      <td align="right">
+        <b>Email address:</b>
+      </td>
+      <td>
+        <input size="35" id="email" name="email" autofocus required type="email">
+      </td>
+    </tr>  
+  </table>
+  <br>
+
+  <input type="hidden" id="token" name="token" value="[% issue_hash_token(['create_account']) FILTER html %]">
+  <input type="submit" id="send" value="Send">
+</form>
+
+[% PROCESS global/footer.html.tmpl %]
