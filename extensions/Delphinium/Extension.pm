@@ -14,6 +14,7 @@ use Bugzilla::Extension::Delphinium::Util;
 
 use Bugzilla::Constants;
 use Bugzilla::Util;
+use Bugzilla::Config qw(SetParam write_params);
 
 our $VERSION = '0.01';
 
@@ -40,9 +41,42 @@ sub bug_check_can_change_field {
 sub modify_new_account {
     my ($self, $args) = @_;
     my $cgi = $args->{'cgi'};
+
+    # Try and avoid false triggers of this code, which wastes a username
+    if (!defined($cgi->param('email'))
+        || !defined($cgi->param('token'))
+        || defined($cgi->param('password'))
+        || defined($cgi->param('GoAheadAndLogIn')))
+    {
+        return;
+    }
+
+    # This code gets run when the user enters their email address to
+    # start the account creation process. So a username allocated may not
+    # actually come to exist, if the user never completes the process.
+    my @logins = split(/[\s,]+/, Bugzilla->params->{'login_name_queue'});
+    my $login;
     
-    $cgi->param('login', generate_random_password());
+    if (scalar(@logins)) {
+        $login = shift(@logins);
+        SetParam('login_name_queue', join(", ", @logins));
+        write_params();
+    }
+    else {
+        # Any random string will do as a backup
+        $login = generate_random_password();
+    }
+    
+    $cgi->param('login', $login);
 }
+
+sub config_add_panels {
+    my ($self, $args) = @_;
+    
+    my $modules = $args->{panel_modules};
+    $modules->{Delphinium} = "Bugzilla::Extension::Delphinium::Config";
+}
+
 
 
 __PACKAGE__->NAME;
