@@ -13,6 +13,7 @@ if (defined $ENV{VCAP_APPLICATION}){
 }
 
 %answer = (
+    ADMIN_LOGIN    => 'gerv',
     ADMIN_EMAIL    => 'gerv@mozilla.org',
     ADMIN_PASSWORD => 'staccato',
     ADMIN_REALNAME => 'Gervase Markham',
