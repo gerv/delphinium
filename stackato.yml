@@ -30,7 +30,8 @@ ignores:
   - data/params
   - .git
   - data/template
-  
-requirements:
-  ubuntu:
-    - nano
+
+urls:
+  - delphinium.paas.allizom.org
+  - delphinium.paas.mozilla.org
+  - delphinium.mozilla.org
