@@ -106,17 +106,6 @@
     </tr>
   [% END %]
 
-  <tr>
-    <td colspan="2"><hr></td>
-  </tr>
-
-  <tr>
-    <th>Your real name (optional, but encouraged):</th>
-    <td>
-      <input size="35" name="realname" value="[% user.realname FILTER html %]">
-    </td>
-  </tr>  
-
   [% Hook.process('field') %]
 
 </table>
