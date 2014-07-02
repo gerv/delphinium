@@ -1,1 +1,22 @@
-<a href="buglist.cgi?bug_status=OPEN&order=changeddate%20DESC">Currently Active [%+ terms.Bugs %]</a>
+<p>Thank you for taking part in this important research. Your continued
+participation is greatly appreciated and will help shape policy around
+cybersecurity issues. Please take a moment to read and respond to the
+following questions.</p>
+
+<div id="mydashboard">
+  <div class="yui3-skin-sam">
+    <div id="query_container">
+      <div class="query_heading"></div>
+      <div class="query_description"></div>
+      <span id="query_count_refresh" style="display: none">
+        <span class="items_found" id="query_bugs_found">0 [% terms.bugs %] found</span>
+        | <a class="refresh" href="javascript:void(0);" id="query_refresh">Refresh</a>
+        | <a class="buglist" href="javascript:void(0);" id="query_buglist">As List</a>
+      </span>
+      <div id="query_pagination_top"></div>
+      <div id="query_table"></div>
+    </div>
+  </div>
+</div>
+
+<br style="clear: both">

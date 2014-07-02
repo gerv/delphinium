@@ -6,15 +6,45 @@
 # defined by the Mozilla Public License, v. 2.0.
 
 package Bugzilla::Extension::Delphinium::Util;
+
 use strict;
+
+use Bugzilla::CGI;
+use Bugzilla::Search;
+use Bugzilla::Status;
+
 use base qw(Exporter);
-our @EXPORT = qw(
-    
+@Bugzilla::Extension::Delphinium::Util::EXPORT = qw(
+    open_states
+    closed_states
+    quoted_open_states
+    quoted_closed_states
 );
 
-# This file can be loaded by your extension via 
-# "use Bugzilla::Extension::Delphinium::Util". You can put functions
-# used by your extension in here. (Make sure you also list them in
-# @EXPORT.)
+our $_open_states;
+sub open_states {
+    $_open_states ||= Bugzilla::Status->match({ is_open => 1, isactive => 1 });
+    return wantarray ? @$_open_states : $_open_states;
+}
+
+our $_quoted_open_states;
+sub quoted_open_states {
+    my $dbh = Bugzilla->dbh;
+    $_quoted_open_states ||= [ map { $dbh->quote($_->name) } open_states() ];
+    return wantarray ? @$_quoted_open_states : $_quoted_open_states;
+}
+
+our $_closed_states;
+sub closed_states {
+    $_closed_states ||= Bugzilla::Status->match({ is_open => 0, isactive => 1 });
+    return wantarray ? @$_closed_states : $_closed_states;
+}
+
+our $_quoted_closed_states;
+sub quoted_closed_states {
+    my $dbh = Bugzilla->dbh;
+    $_quoted_closed_states ||= [ map { $dbh->quote($_->name) } closed_states() ];
+    return wantarray ? @$_quoted_closed_states : $_quoted_closed_states;
+}
 
 1;

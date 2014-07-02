@@ -78,5 +78,10 @@ sub config_add_panels {
 }
 
 
+sub webservice {
+    my ($self, $args) = @_;
+    my $dispatch = $args->{dispatch};
+    $dispatch->{Delphinium} = "Bugzilla::Extension::Delphinium::WebService";
+}
 
 __PACKAGE__->NAME;
