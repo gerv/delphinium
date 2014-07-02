@@ -21,14 +21,9 @@ sub get_param_list {
         name => 'login_name_queue',
         type => 't',
         default => join(", ", qw(
-            Waxflower
-            Bloom
             Buckthorn
             Marigold
-            Gillyflower
-            Sage
             Speedwell
-            Nerine
             Broom
             Lily
             Tansy
@@ -88,6 +83,11 @@ sub get_param_list {
             Tracelium
             Amaryllis
             Snapdragon
+            Waxflower
+            Bloom
+            Gillyflower
+            Sage
+            Nerine
         )),
     },
     );
