@@ -618,7 +618,8 @@ sub bz_locations {
         $datadir = "data";
     }
 
-    $datadir = "$libpath/$datadir";
+    my $datadirbase = $ENV{'STACKATO_FILESYSTEM'} ? $ENV{'STACKATO_FILESYSTEM'} : $libpath;
+    $datadir = "$datadirbase/$datadir";
     # We have to return absolute paths for mod_perl. 
     # That means that if you modify these paths, they must be absolute paths.
     return {

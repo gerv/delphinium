@@ -4,9 +4,6 @@ use warnings;
 use ActiveState::Run qw(run);
 use version;
 
-# Just to have the diagnostic output in the staging log
-run("$^X ./checksetup.pl --check-modules");
-
 # Create an "answer" file for checksetup.pl to configure MySQL
 # and to setup the initial administrator account.
 our %answer;
@@ -40,4 +37,4 @@ close $fh;
 # First run of checksetup.pl will update localconfig file.
 # Second run will actually configure the database and
 # create the admin user.
-run("$^X ./checksetup.pl $answer") for 1..2;
+run("$^X ./checksetup.pl --verbose $answer") for 1..2;

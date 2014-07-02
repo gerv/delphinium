@@ -21,6 +21,7 @@ min_version:
 
 services:
   ${name}-db: mysql
+  ${name}-files: filesystem
 
 mem: 128M
 
