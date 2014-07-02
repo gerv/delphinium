@@ -165,8 +165,8 @@
   <ul class="zero_result_links">
     <li>[% PROCESS enter_bug_link %]</li>
     [% IF one_product.defined %]
-      <li><a href="enter_bug.cgi">File a new [% terms.bug %] in a
-        different product</a></li>
+      <li><a href="enter_bug.cgi">Add a new [% terms.bug %] in a
+        different phase</a></li>
     [% END %]
     <li><a href="[% PROCESS edit_search_url %]">Edit this search</a></li>
     <li><a href="query.cgi">Start a new search</a></li>
@@ -313,10 +313,10 @@
 [% BLOCK enter_bug_link %]
   <a href="enter_bug.cgi
            [%- IF one_product.defined %]?product=
-             [%- one_product.name FILTER uri %][% END %]">File
+             [%- one_product.name FILTER uri %][% END %]">Add
     a new [% terms.bug %]
    [% IF one_product.defined %]
-     in the "[% one_product.name FILTER html %]" product
+     in the "[% one_product.name FILTER html %]" phase
    [% END %]</a>
 [% END %]
 

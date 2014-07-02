@@ -17,13 +17,13 @@
 
 [% IF target == "enter_bug.cgi" %]
   [% title = "Enter $terms.Bug" %]
-  [% h2 = BLOCK %]First, you must pick a product on which to enter [% terms.abug %]: [% END %]
+  [% h2 = BLOCK %]First, you must pick a phase for which to enter [% terms.abug %]: [% END %]
 [% ELSIF target == "describecomponents.cgi" %]
   [% title = "Browse" %]
-  [% h2 = "Select a product category to browse:" %]
+  [% h2 = "Select a phase to browse:" %]
 [% END %]
 
-[% DEFAULT title = "Choose a Product" %]
+[% DEFAULT title = "Choose a Phase" %]
 [% PROCESS global/header.html.tmpl %]
 
 <h2>[% h2 FILTER html %]</h2>
